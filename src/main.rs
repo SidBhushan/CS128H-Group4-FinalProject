@@ -1,29 +1,34 @@
 mod parsing;
 mod serialization;
 mod server;
+mod shared_state;
 
 use std::io;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
+use parsing::Parser;
 use server::Server;
+use shared_state::User;
 
 fn main() {
-    let input_parsing_thread = thread::spawn(|| {
+    let user = Arc::new(Mutex::new(User::new()));
+
+    let parser = Parser::new(user.clone());
+    let input_parsing_thread = thread::spawn(move || {
         let mut input = String::new();
         loop {
             io::stdin()
                 .read_line(&mut input)
                 .expect("Failed to read input");
-            parsing::parse_input(&input);
+            parser.parse_input(&input);
             input.clear();
         }
     });
 
-    let server_thread = thread::spawn(|| {
-        let server = Server::new();
-        println!("Server started on port: {}", server.port);
+    let server = Server::new(user.clone());
+    let server_thread = thread::spawn(move || {
         for stream in server.listener.incoming() {
-            println!("Received stream");
             let stream = stream.unwrap();
             Server::handle_connection(stream);
         }
