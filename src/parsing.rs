@@ -54,6 +54,46 @@ impl Parser {
                     }
                 }
             }
+            "set_key" => {
+                if tokens.len() != 2 {
+                    println!("{}", "Usage: /set_key [encryption_key]".red());
+                } else {
+                    let user = self.user.clone();
+                    let mut user_guard = user.lock().unwrap();
+                    let encryptor = &mut user_guard.encryptor;
+                    encryptor.key = Some(tokens[1].as_bytes().to_vec());
+                    println!(
+                        "{}",
+                        format!("Changed encryption key to: {}", tokens[1]).green()
+                    );
+                }
+            }
+            "get_key" => {
+                if tokens.len() != 1 {
+                    println!("{}", "Usage: /get_key".red());
+                } else {
+                    let user = self.user.clone();
+                    let user_guard = user.lock().unwrap();
+                    let encryptor = &user_guard.encryptor;
+                    let encryption = &encryptor.key;
+                    if let Some(key) = encryption {
+                        println!("{}", format!("The encryption key is: {:?}", key).green());
+                    } else {
+                        println!("{}", "Encryption is not enabled".green());
+                    }
+                }
+            }
+            "remove_encryption" => {
+                if tokens.len() != 1 {
+                    println!("{}", "Usage: /remove_encryption".red());
+                } else {
+                    let user = self.user.clone();
+                    let mut user_guard = user.lock().unwrap();
+                    let encryptor = &mut user_guard.encryptor;
+                    encryptor.key = None;
+                    println!("{}", "Encryption Removed".green());
+                }
+            }
             "send_file" => {
                 if tokens.len() != 3 {
                     println!(
@@ -99,12 +139,16 @@ impl Parser {
             sender_length: username.len() as u8,
             content: message,
         };
-        let packet_bytes = &packet.to_bytes();
+        let mut packet_bytes = packet.to_bytes();
+
+        let encryptor = &user_guard.encryptor;
+        encryptor.apply_encryption(&mut packet_bytes);
+
         for ip in &user_guard.connected_to {
             let stream = TcpStream::connect(ip);
             match stream {
                 Ok(mut stream) => {
-                    let result = stream.write(packet_bytes);
+                    let result = stream.write(&packet_bytes);
                     if let Err(err_message) = result {
                         println!(
                             "{}",

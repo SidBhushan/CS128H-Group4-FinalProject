@@ -1,7 +1,6 @@
 use std::fs;
 use std::io::prelude::*;
-use std::net::TcpListener;
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 
@@ -33,9 +32,15 @@ impl Server {
         }
     }
 
-    pub fn handle_connection(mut stream: TcpStream) {
+    pub fn handle_connection(&self, mut stream: TcpStream) {
         let mut buffer: Vec<u8> = Vec::new();
         stream.read_to_end(&mut buffer).unwrap();
+
+        let user = self.user.clone();
+        let user_guard = user.lock().unwrap();
+        let encryptor = &user_guard.encryptor;
+        encryptor.apply_encryption(&mut buffer);
+
         let message = Message::from_bytes(&buffer);
         match message.content {
             MessageContent::Text(_) => {

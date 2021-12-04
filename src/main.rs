@@ -1,3 +1,4 @@
+mod encryption;
 mod parsing;
 mod serialization;
 mod server;
@@ -30,7 +31,7 @@ fn main() {
     let server_thread = thread::spawn(move || {
         for stream in server.listener.incoming() {
             let stream = stream.unwrap();
-            Server::handle_connection(stream);
+            server.handle_connection(stream);
         }
     });
 
