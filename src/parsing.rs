@@ -109,7 +109,6 @@ impl Parser {
                 }
             }
             "exit" => {
-                // TODO: Cleanly shut down
                 println!("{}", "Exiting...".green());
                 std::process::exit(0);
             }
